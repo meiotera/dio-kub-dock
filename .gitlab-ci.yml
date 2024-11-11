@@ -1,5 +1,6 @@
 stages:
   - test
+  - build
   - deploy
 
 # Job para rodar testes
@@ -12,16 +13,29 @@ realizar_testes:
   script:
     - npm test
   only:
-    - docker-deploy
+    - kubernetes-deploy
 
-# Job para construir e rodar o container Docker
-docker_deploy:
-  stage: deploy
+# Job para construir a imagem Docker
+build_image:
+  stage: build
   image: docker:24.0
   services:
     - docker:24.0-dind
   script:
-    - docker build -t myapp:latest .
-    - docker run -p 3000:3000 myapp:latest
+    - docker build -t gcr.io/your-project-id/myapp:latest .
+    - docker push gcr.io/your-project-id/myapp:latest
   only:
-    - docker-deploy
+    - kubernetes-deploy
+
+# Job para fazer o deploy no Kubernetes
+deploy_kubernetes:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  script:
+    - gcloud auth activate-service-account --key-file=$GOOGLE_APPLICATION_CREDENTIALS
+    - gcloud config set project your-project-id
+    - gcloud container clusters get-credentials your-cluster --zone your-zone
+    - kubectl apply -f k8s/deployment.yaml
+    - kubectl apply -f k8s/service.yaml
+  only:
+    - kubernetes-deploy
