@@ -1,0 +1,27 @@
+stages:
+  - test
+  - deploy
+
+# Job para rodar testes
+realizar_testes:
+  stage: test
+  image: node:20.7.0-alpine3.17
+  before_script:
+    - cd app/
+    - npm install
+  script:
+    - npm test
+  only:
+    - docker-deploy
+
+# Job para construir e rodar o container Docker
+docker_deploy:
+  stage: deploy
+  image: docker:24.0
+  services:
+    - docker:24.0-dind
+  script:
+    - docker build -t myapp:latest .
+    - docker run -p 3000:3000 myapp:latest
+  only:
+    - docker-deploy
